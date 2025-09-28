@@ -1,5 +1,5 @@
 name = "solarballs"
 compatibility_date = "2025-09-28"
 
-# Tell Pages where to find your static assets
+# For Cloudflare Pages: serve static files from /public
 pages_build_output_dir = "public"
