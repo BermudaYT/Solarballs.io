@@ -58,7 +58,12 @@ document.addEventListener("keyup",e=>keys[e.key]=false);
 function startGame(){
   player={x:2000,y:2000,speed:200,avatar:{planet:selectedPlanet||"earth",name:document.getElementById("nickname").value||"Unnamed"},alive:true};
   document.getElementById("menu").style.display="none";
-  socket=new WebSocket("ws://localhost:8080");socket.binaryType="arraybuffer";
+  socket = new WebSocket(
+  (location.protocol === "https:" ? "wss://" : "ws://") +
+  location.host +
+  "/ws"
+);
+socket.binaryType = "arraybuffer";
   socket.onopen=()=>sendInit();
   socket.onmessage=e=>parsePacket(new DataView(e.data));
 }

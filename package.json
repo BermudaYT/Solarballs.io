@@ -5,7 +5,11 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js",
+<<<<<<< HEAD
     "build": "echo 'No build step needed'"
+=======
+    "build": "echo \"No build step needed\""
+>>>>>>> dc022fb885e703555575424ce91d695626e63bcb
   },
   "keywords": [],
   "author": "",
