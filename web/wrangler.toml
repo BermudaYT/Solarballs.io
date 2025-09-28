@@ -1,5 +1,0 @@
-name = "solarballs"
-compatibility_date = "2025-09-28"
-
-# For Cloudflare Pages: serve static files from /public
-pages_build_output_dir = "public"
