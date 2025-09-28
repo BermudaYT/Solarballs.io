@@ -1,22 +1,19 @@
 {
   "name": "solarballs.io",
   "version": "1.0.0",
+  "description": "Solarballs.io - multiplayer game using Cloudflare Pages + Workers",
   "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "node server.js",
     "start": "node server.js",
-<<<<<<< HEAD
-    "build": "echo 'No build step needed'"
-=======
-    "build": "echo \"No build step needed\""
->>>>>>> dc022fb885e703555575424ce91d695626e63bcb
+    "build": "echo \"No build step needed\"",
+    "preview": "wrangler pages dev ./public"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
   "dependencies": {
     "express": "^5.1.0",
     "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "wrangler": "^3.79.0"
   }
 }
