@@ -2,11 +2,19 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Solarballs.io Multiplayer</title>
-  <style>
-    body { margin:0; overflow:hidden; background:#000; color:#fff; font-family:sans-serif; }
-    canvas { display:block; }
+  <title>Solarballs.io, an unofficial SolarBalls game</title>
+  <!-- Favicon in multiple sizes -->
+  <link rel="icon" type="image/png" sizes="32x32" href="web/public/assets/sun.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="web/public/assets/sun.png">
 
+  <!-- Optional iOS homescreen icon -->
+  <link rel="apple-touch-icon" sizes="180x180" href="web/public/assets/sun.png">
+  <style>
+    body {
+      margin:0;overflow:hidden;font-family:sans-serif;color:#fff;
+      background: radial-gradient(ellipse at bottom, #0d1b2a 0%, #000000 100%);
+    }
+    canvas { display:block; }
     .menu {
       position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
       background:rgba(0,0,0,.6);padding:20px;border-radius:12px;text-align:center;z-index:20;
@@ -17,11 +25,49 @@
     .avatar-option { cursor:pointer; padding:5px; border-radius:8px; background:rgba(255,255,255,.1); }
     .avatar-option img { width:50px; height:50px; object-fit:contain; display:block; margin:0 auto; }
     .btn { margin-top:12px; padding:8px 16px; background:#222; border:1px solid #555; border-radius:8px; cursor:pointer; color:#fff; }
-
     #chatBox { position:absolute;bottom:50px;left:10px;width:300px;height:160px;
       background:rgba(0,0,0,.5);border-radius:8px;padding:6px;overflow-y:auto; }
     #chatInput { position:absolute;bottom:10px;left:10px;width:300px;padding:6px;
       border-radius:8px;border:none;background:rgba(255,255,255,.1);color:#fff; }
+
+    /* Loading screen */
+    .loading {
+      position:absolute;top:0;left:0;right:0;bottom:0;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      background:rgba(0,0,0,0.9);color:#fff;font-size:20px;z-index:30;
+    }
+    .loading.hidden { display:none; }
+
+    /* Mobile controls */
+    .mobile-controls {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 50;
+    }
+    .mobile-row {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+    }
+    .mobile-btn {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.4);
+      color: #fff;
+      font-size: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+    }
   </style>
 </head>
 <body>
@@ -31,6 +77,19 @@
     <input id="nickname" placeholder="Nickname"><br>
     <div class="avatar-grid" id="avatarGrid"></div>
     <button class="btn" onclick="startGame()">Start Game</button>
+    <button class="btn" onclick="showMinigames()">Minigames</button>
+  </div>
+
+  <div id="minigameMenu" class="menu" style="display:none;">
+    <h2>Minigames</h2>
+    <button class="btn" onclick="startRedGiant()">🌟 Red Giant Survival</button>
+    <p style="margin-top:10px;font-size:14px;opacity:0.7;">(more coming soon)</p>
+    <button class="btn" onclick="backToMain()">⬅ Back</button>
+  </div>
+
+  <div id="loading" class="loading hidden">
+    <h2>Connecting to Solarballs.io...</h2>
+    <p>Please wait while we sync players.</p>
   </div>
 
   <canvas id="game"></canvas>
@@ -39,9 +98,14 @@
 
 <script>
 const canvas=document.getElementById("game"),ctx=canvas.getContext("2d");
-canvas.width=innerWidth;canvas.height=innerHeight;onresize=()=>{canvas.width=innerWidth;canvas.height=innerHeight};
+canvas.width=innerWidth;canvas.height=innerHeight;
+onresize=()=>{canvas.width=innerWidth;canvas.height=innerHeight};
 
 let socket,selfId=null,player,players={},camera={x:0,y:0},keys={},stars=[];
+let messageQueue=[]; 
+let loadingReady=false; 
+let mode="normal";
+
 const planetImages={},planetSizes={
   sun:200, mercury:25, venus:35, earth:40, mars:30,
   jupiter:80, saturn:100, uranus:90, neptune:85,
@@ -50,27 +114,60 @@ const planetImages={},planetSizes={
 const planetList=["sun","mercury","venus","earth","mars","jupiter","saturn","uranus","neptune","pluto","proteus","theia"];
 planetList.forEach(p=>{planetImages[p]=new Image();planetImages[p].src="assets/"+p+".png";});
 
-function genStars(n=300){stars=[];for(let i=0;i<n;i++)stars.push({x:Math.random()*4000,y:Math.random()*4000,s:Math.random()*2+1});}genStars();
+function genStars(n=300){stars=[];for(let i=0;i<n;i++)stars.push({x:Math.random()*4000,y:Math.random()*4000,s:Math.random()*2+1});}
+genStars();
 
 document.addEventListener("keydown",e=>keys[e.key]=true);
 document.addEventListener("keyup",e=>keys[e.key]=false);
 
-function startGame(){
-  player={x:2000,y:2000,speed:200,avatar:{planet:selectedPlanet||"earth",name:document.getElementById("nickname").value||"Unnamed"},alive:true};
+function showMinigames(){
   document.getElementById("menu").style.display="none";
-  socket = new WebSocket(
-  (location.protocol === "https:" ? "wss://" : "ws://") +
-  location.host +
-  "/ws"
-);
-socket.binaryType = "arraybuffer";
-  socket.onopen=()=>sendInit();
-  socket.onmessage=e=>parsePacket(new DataView(e.data));
+  document.getElementById("minigameMenu").style.display="block";
+}
+function backToMain(){
+  document.getElementById("minigameMenu").style.display="none";
+  document.getElementById("menu").style.display="block";
 }
 
-function sendInit(){sendMove(1);}
+function startGame(){
+  mode="normal";
+  setupPlayer();
+  connectWS("GameRoom");
+}
+function startRedGiant(){
+  mode="redgiant";
+  document.getElementById("minigameMenu").style.display="none";
+  setupPlayer();
+  connectWS("RedGiantRoom");
+}
+
+function setupPlayer(){
+  player={
+    x:2000,y:2000,speed:200,
+    avatar:{planet:selectedPlanet||"earth",name:document.getElementById("nickname").value||"Unnamed"},
+    alive:true
+  };
+  document.getElementById("menu").style.display="none";
+  document.getElementById("loading").classList.remove("hidden"); 
+  selfId=-1; players[selfId]={id:selfId,...player};
+}
+
+function connectWS(room){
+  socket=new WebSocket(`wss://solarballs-backend.late-tooth-f70d.workers.dev/ws?room=${room}`);
+  socket.binaryType="arraybuffer";
+  socket.onopen=()=>{console.log("WS connected");sendInit();};
+  socket.onmessage=e=>{ messageQueue.push(e.data); };
+  socket.onerror=e=>console.error("WS error",e);
+  socket.onclose=()=>console.log("WS closed");
+  setInterval(()=>{ if(player && selfId && players[selfId]) sendMove(); },100);
+  setInterval(()=>{ if(socket && socket.readyState===WebSocket.OPEN) socket.send(new Uint8Array([9])); },5000);
+}
+
+function processMessages(){while(messageQueue.length>0)parsePacket(new DataView(messageQueue.shift()));}
+function sendInit(){ sendMove(1); }
 function sendMove(type=2){
-  if(type===2&&!selfId)return;
+  if(!socket || socket.readyState!==WebSocket.OPEN) return;
+  if(type===2 && !selfId) return;
   const enc=new TextEncoder(),a=enc.encode(player.avatar.planet),n=enc.encode(player.avatar.name);
   const buf=new ArrayBuffer(1+2+2+2+1+a.length+1+n.length),v=new DataView(buf);let o=0;
   v.setUint8(o++,type);v.setUint16(o,selfId||0,true);o+=2;
@@ -80,7 +177,7 @@ function sendMove(type=2){
   socket.send(buf);
 }
 function sendChat(msg){
-  if(!selfId)return;
+  if(!selfId || !socket || socket.readyState!==WebSocket.OPEN) return;
   const enc=new TextEncoder(),a=enc.encode(player.avatar.planet),n=enc.encode(player.avatar.name),m=enc.encode(msg);
   const buf=new ArrayBuffer(1+2+1+a.length+1+n.length+2+m.length),v=new DataView(buf);let o=0;
   v.setUint8(o++,6);v.setUint16(o,selfId,true);o+=2;
@@ -89,6 +186,7 @@ function sendChat(msg){
   v.setUint16(o,m.length,true);o+=2;m.forEach((b,i)=>v.setUint8(o+i,b));
   socket.send(buf);
 }
+
 function parsePacket(v){
   const type=v.getUint8(0);
   if(type===1||type===2){
@@ -96,11 +194,18 @@ function parsePacket(v){
     const x=v.getUint16(o,true);o+=2,y=v.getUint16(o,true);o+=2;
     const al=v.getUint8(o++);let avatar="";for(let i=0;i<al;i++)avatar+=String.fromCharCode(v.getUint8(o++));
     const nl=v.getUint8(o++);let nick="";for(let i=0;i<nl;i++)nick+=String.fromCharCode(v.getUint8(o++));
-    if(!players[id])players[id]={id,x,y,avatar:{planet:avatar,name:nick},alive:true};
+    if(!players[id]) players[id]={id,x,y,avatar:{planet:avatar,name:nick},alive:true};
     else Object.assign(players[id],{x,y,avatar:{planet:avatar,name:nick}});
-    if(type===1&&!selfId)selfId=id;
+    if(type===1 && selfId===-1){
+      let old=players[-1];delete players[-1];
+      selfId=id;
+      players[selfId]={id:selfId,...old};
+      console.log("Assigned real selfId:",selfId);
+      document.getElementById("loading").classList.add("hidden");
+      loadingReady=true;
+    }
   }
-  else if(type===3){delete players[v.getUint16(1,true)];}
+  else if(type===3){ delete players[v.getUint16(1,true)]; }
   else if(type===6){
     let o=1,id=v.getUint16(o,true);o+=2;
     const al=v.getUint8(o++);let avatar="";for(let i=0;i<al;i++)avatar+=String.fromCharCode(v.getUint8(o++));
@@ -109,28 +214,71 @@ function parsePacket(v){
     if(players[id]){players[id].chat=msg;setTimeout(()=>players[id].chat=null,4000);addMessage(nick,msg);}
   }
 }
+
 function update(dt){
+  processMessages();
   if(!player||!selfId||!players[selfId])return;
-  if(keys["w"])player.y-=player.speed*dt;if(keys["s"])player.y+=player.speed*dt;
-  if(keys["a"])player.x-=player.speed*dt;if(keys["d"])player.x+=player.speed*dt;
+  if(keys["w"])player.y-=player.speed*dt;
+  if(keys["s"])player.y+=player.speed*dt;
+  if(keys["a"])player.x-=player.speed*dt;
+  if(keys["d"])player.x+=player.speed*dt;
   players[selfId].x=player.x;players[selfId].y=player.y;players[selfId].avatar=player.avatar;
-  sendMove();
-  camera.x=player.x-canvas.width/2;camera.y=player.y-canvas.height/2;
+  let targetX=player.x-canvas.width/2;let targetY=player.y-canvas.height/2;
+  camera.x+=(targetX-camera.x)*0.1;camera.y+=(targetY-camera.y)*0.1;
 }
 function scr(x,y){return{x:x-camera.x,y:y-camera.y};}
-function drawStars(){ctx.fillStyle="white";for(const s of stars){const p=scr(s.x,s.y);ctx.beginPath();ctx.arc(p.x,p.y,s.s,0,Math.PI*2);ctx.fill();}}
-function drawSun(){const sun=planetImages.sun,pos=scr(2000,2000);if(sun.complete)ctx.drawImage(sun,pos.x-100,pos.y-100,200,200);}
-function drawPlayer(p){
-  if(!p.alive)return;const pos=scr(p.x,p.y),img=planetImages[p.avatar.planet],size=planetSizes[p.avatar.planet]||40;
-  if(img&&img.complete){const ar=img.width/img.height;ctx.drawImage(img,pos.x-size/2*ar,pos.y-size/2,size*ar,size);}
-  else{ctx.fillStyle="#888";ctx.beginPath();ctx.arc(pos.x,pos.y,size/2,0,Math.PI*2);ctx.fill();}
-  ctx.fillStyle="#fff";ctx.font="12px sans-serif";ctx.textAlign="center";ctx.fillText(p.avatar.name,pos.x,pos.y-size/2-6);
-  if(p.chat){ctx.fillStyle="rgba(255,255,255,.9)";const w=ctx.measureText(p.chat).width+12;ctx.fillRect(pos.x-w/2,pos.y-size/2-26,w,18);ctx.fillStyle="#000";ctx.fillText(p.chat,pos.x,pos.y-size/2-12);}
+function drawStars(){
+  ctx.fillStyle="white";
+  for(const s of stars){
+    const p=scr(s.x,s.y);
+    ctx.globalAlpha=0.5+Math.random()*0.5;
+    ctx.beginPath();ctx.arc(p.x,p.y,s.s,0,Math.PI*2);ctx.fill();
+  }
+  ctx.globalAlpha=1;
 }
-function draw(){ctx.clearRect(0,0,canvas.width,canvas.height);drawStars();drawSun();for(const id in players)drawPlayer(players[id]);}
-let last=performance.now();function loop(t){const dt=(t-last)/1000;last=t;update(dt);draw();requestAnimationFrame(loop);}loop(performance.now());
+function drawPlayer(p){
+  if(!p.alive)return;
+  const pos=scr(p.x,p.y),img=planetImages[p.avatar.planet],size=planetSizes[p.avatar.planet]||40;
+  if(img&&img.complete){
+    const ar=img.width/img.height;
+    ctx.drawImage(img,pos.x-size/2*ar,pos.y-size/2,size*ar,size);
+  } else {
+    ctx.fillStyle="#888";ctx.beginPath();ctx.arc(pos.x,pos.y,size/2,0,Math.PI*2);ctx.fill();
+  }
+  ctx.fillStyle="#fff";ctx.font="12px sans-serif";ctx.textAlign="center";
+  ctx.fillText(p.avatar.name,pos.x,pos.y-size/2-6);
+  if(p.chat){
+    ctx.fillStyle="rgba(255,255,255,.9)";
+    const w=ctx.measureText(p.chat).width+12;
+    ctx.fillRect(pos.x-w/2,pos.y-size/2-26,w,18);
+    ctx.fillStyle="#000";
+    ctx.fillText(p.chat,pos.x,pos.y-size/2-12);
+  }
+}
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  drawStars();
+  for(const id in players) drawPlayer(players[id]);
+  if(mode==="redgiant") drawRedGiant();
+}
 
-// === Avatar selection grid ===
+function drawRedGiant(){
+  redGiant.radius += redGiant.grow?1.5:-1.5;
+  if(redGiant.radius>600||redGiant.radius<300) redGiant.grow=!redGiant.grow;
+  const pos=scr(redGiant.x,redGiant.y);
+  ctx.beginPath();ctx.arc(pos.x,pos.y,redGiant.radius,0,Math.PI*2);
+  ctx.fillStyle="rgba(255,50,50,0.4)";ctx.fill();
+}
+
+let last=performance.now();
+function loop(t){
+  const dt=(t-last)/1000;last=t;
+  update(dt);draw();
+  requestAnimationFrame(loop);
+}
+loop(performance.now());
+
+// Avatar selection
 let selectedPlanet="earth";
 const avatarGrid=document.getElementById("avatarGrid");
 planetList.forEach(p=>{
@@ -142,10 +290,38 @@ planetList.forEach(p=>{
   avatarGrid.appendChild(div);
 });
 
-// === Chat ===
+// Chat
 const chatBox=document.getElementById("chatBox"),chatInput=document.getElementById("chatInput");
 function addMessage(f,m){const d=document.createElement("div");d.textContent=f+": "+m;chatBox.appendChild(d);chatBox.scrollTop=chatBox.scrollHeight;}
-chatInput.onkeydown=e=>{if(e.key==="Enter"&&chatInput.value.trim()){sendChat(chatInput.value);addMessage("You",chatInput.value);chatInput.value="";}};
+chatInput.onkeydown=e=>{
+  if(e.key==="Enter"&&chatInput.value.trim()){
+    sendChat(chatInput.value);addMessage("You",chatInput.value);
+    chatInput.value="";
+  }
+};
+
+// Mobile controls injection if iOS/Android
+const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+if(isMobile){
+  const controls = document.createElement("div");
+  controls.className = "mobile-controls";
+  controls.innerHTML = `
+    <div class="mobile-row"><div class="mobile-btn" data-key="w">↑</div></div>
+    <div class="mobile-row">
+      <div class="mobile-btn" data-key="a">←</div>
+      <div class="mobile-btn" data-key="s">↓</div>
+      <div class="mobile-btn" data-key="d">→</div>
+    </div>
+  `;
+  document.body.appendChild(controls);
+
+  document.querySelectorAll('.mobile-btn').forEach(btn => {
+    const key = btn.dataset.key;
+    btn.addEventListener('touchstart', e => { e.preventDefault(); keys[key] = true; });
+    btn.addEventListener('touchend', e => { e.preventDefault(); keys[key] = false; });
+    btn.addEventListener('touchcancel', e => { e.preventDefault(); keys[key] = false; });
+  });
+}
 </script>
 </body>
 </html>
