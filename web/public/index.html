@@ -161,7 +161,7 @@ function setupPlayer(){
 }
 
 function connectWS(room){
-  socket=new WebSocket(`wss://solarballs-backend.late-tooth-f70d.workers.dev/ws?room=${room}`);
+  socket=new WebSocket(`wss://ws.solarballs.xyz/ws?room=${room}`);
   socket.binaryType="arraybuffer";
   socket.onopen=()=>{console.log("WS connected");sendInit();};
   socket.onmessage=e=>{ messageQueue.push(e.data); };
