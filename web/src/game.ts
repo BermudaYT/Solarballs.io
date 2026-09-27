@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Solarballs.io Multiplayer</title>
+  <title>Solarballs Multiplayer</title>
   <style>
     body { margin:0; overflow:hidden; background:#000; color:#fff; font-family:sans-serif; }
     canvas { display:block; }
@@ -27,7 +27,7 @@
 <body>
   <div id="menu" class="menu">
     <img src="assets/logo.png" class="logo">
-    <h2>Join Solarballs.io</h2>
+    <h2>Join Solarballs</h2>
     <input id="nickname" placeholder="Nickname"><br>
     <div class="avatar-grid" id="avatarGrid"></div>
     <button class="btn" onclick="startGame()">Start Game</button>
