@@ -1,5 +1,5 @@
 {
-  "name": "solarballs.io",
+  "name": "solarballs-game",
   "version": "1.0.0",
   "description": "Multiplayer game hosted on Cloudflare Pages (frontend) + Workers (backend).",
   "main": "server.js",
