@@ -2,7 +2,7 @@
 <html>
 <head>
  <meta charset="UTF-8">
- <title>Solarballs.io, a simple multiplayer game</title>
+ <title>Solarballs, a simple multiplayer game</title>
   <style>
     body { margin: 0; overflow: hidden; background: black; }
     canvas { display: block; }
