@@ -72,5 +72,5 @@ function sendInit(ws, player) {
 }
 
 server.listen(8080, () => {
-  console.log("🌍 Solarballs.io server running on http://localhost:8080");
+  console.log("🌍 Solarballs server running on http://localhost:8080");
 });
